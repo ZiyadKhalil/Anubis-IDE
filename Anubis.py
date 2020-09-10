@@ -6,6 +6,8 @@
 import sys
 import glob
 import serial
+from contextlib import redirect_stdout
+from io import StringIO
 
 import Python_Coloring
 from PyQt5 import QtCore
@@ -129,6 +131,64 @@ class Widget(QWidget):
         global text2
         text2 = QTextEdit()
         text2.setReadOnly(True)
+
+        
+        # Single fucntion executuon tab
+
+        executeTx = QTextEdit()
+        executeTx.setPlaceholderText(
+            "Coma seperated parameters or leave line empty for none.")
+        executeLayout = QVBoxLayout()
+        executeButton = QPushButton('Execute')
+
+        def _executeHandler():
+            input = str(executeTx.toPlainText())
+            if(len(input.splitlines()) <= 1):
+                return
+            paramsValues = input.splitlines()[0].split(',')
+            body = "\n".join(input.splitlines()[1:])
+            try:
+                paramsNames = body[body.find('(')+1:body.find(')')].split(',')
+            except:
+                text2.setText(
+                    'Wrong function signature')
+                text2.repaint()
+
+                return
+
+            if (len(paramsNames) != len(paramsValues)):
+                text2.setText(
+                    'Numbmer of Parameters must match function signature')
+                text2.repaint()
+                return
+
+            paramsCode = ''
+            for name, value in zip(paramsNames, paramsValues):
+                if (name == '' or value == ''):
+                    break
+
+                paramsCode += name + \
+                    '=' + value + '\n'
+
+            code = paramsCode + "\n".join(body.splitlines()[1:])
+            print(code)
+            execOutput = StringIO()
+            with redirect_stdout(execOutput):
+                try:
+                    exec(code)
+                except:
+                    print("There's an error with your code.")
+            text2.clear()
+            text2.setText(execOutput.getvalue())
+            text2.repaint()
+
+        executeButton.clicked.connect(_executeHandler)
+        executeLayout.addWidget(executeTx)
+        executeLayout.addWidget(executeButton)
+        executeTab = QWidget()
+        executeTab.setLayout(executeLayout)
+        tab.addTab(executeTab, "Execute")
+
         # defining a Treeview variable to use it in showing the directory included files
         self.treeview = QTreeView()
 
